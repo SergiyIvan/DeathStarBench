@@ -5,7 +5,12 @@
 #include <thrift/transport/TServerSocket.h>
 
 #include "../utils.h"
+#include "../utils_memcached.h"
+#include "../utils_mongodb.h"
 #include "../utils_thrift.h"
+#include "../UrlShortenService/UrlShortenHandler.h"
+#include "../UserMentionService/UserMentionHandler.h"
+#include "nlohmann/json.hpp"
 #include "TextHandler.h"
 
 using apache::thrift::protocol::TBinaryProtocolFactory;
@@ -14,43 +19,88 @@ using apache::thrift::transport::TFramedTransportFactory;
 using apache::thrift::transport::TServerSocket;
 using namespace social_network;
 
-void sigintHandler(int sig) { exit(EXIT_SUCCESS); }
+static memcached_pool_st* url_memcached_client_pool;
+static mongoc_client_pool_t* url_mongodb_client_pool;
+
+static memcached_pool_st* user_mention_memcached_client_pool;
+static mongoc_client_pool_t* user_mention_mongodb_client_pool;
+
+void sigintHandler(int sig) {
+  if (url_memcached_client_pool != nullptr) {
+    memcached_pool_destroy(url_memcached_client_pool);
+  }
+  if (url_mongodb_client_pool != nullptr) {
+    mongoc_client_pool_destroy(url_mongodb_client_pool);
+  }
+  if (user_mention_memcached_client_pool != nullptr) {
+    memcached_pool_destroy(user_mention_memcached_client_pool);
+  }
+  if (user_mention_mongodb_client_pool != nullptr) {
+    mongoc_client_pool_destroy(user_mention_mongodb_client_pool);
+  }
+  exit(EXIT_SUCCESS);
+}
 
 int main(int argc, char *argv[]) {
   signal(SIGINT, sigintHandler);
   init_logger();
   SetUpTracer("config/jaeger-config.yml", "text-service");
+  SetUpTracer("config/jaeger-config.yml", "url-shorten-service");
+  SetUpTracer("config/jaeger-config.yml", "user-mention-service");
 
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) == 0) {
     int port = config_json["text-service"]["port"];
 
-    std::string url_addr = config_json["url-shorten-service"]["addr"];
-    int url_port = config_json["url-shorten-service"]["port"];
-    int url_conns = config_json["url-shorten-service"]["connections"];
-    int url_timeout = config_json["url-shorten-service"]["timeout_ms"];
-    int url_keepalive = config_json["url-shorten-service"]["keepalive_ms"];
+    // -------------------------------- BEGIN URL --------------------------------
+    int url_mongodb_conns = config_json["url-shorten-mongodb"]["connections"];
+    int url_mongodb_timeout = config_json["url-shorten-mongodb"]["timeout_ms"];
+    int url_memcached_conns = config_json["url-shorten-memcached"]["connections"];
+    int url_memcached_timeout = config_json["url-shorten-memcached"]["timeout_ms"];
 
-    std::string user_mention_addr = config_json["user-mention-service"]["addr"];
-    int user_mention_port = config_json["user-mention-service"]["port"];
-    int user_mention_conns = config_json["user-mention-service"]["connections"];
-    int user_mention_timeout =
-        config_json["user-mention-service"]["timeout_ms"];
-    int user_mention_keepalive =
-        config_json["user-mention-service"]["keepalive_ms"];
+    url_memcached_client_pool = init_memcached_client_pool(config_json, "url-shorten", 32, url_memcached_conns);
+    url_mongodb_client_pool = init_mongodb_client_pool(config_json, "url-shorten", url_mongodb_conns);
+    if (url_memcached_client_pool == nullptr || url_mongodb_client_pool == nullptr) {
+        return EXIT_FAILURE;
+    }
 
-    ClientPool<ThriftClient<UrlShortenServiceClient>> url_client_pool(
-        "url-shorten-service", url_addr, url_port, 0, url_conns, url_timeout,
-        url_keepalive, config_json);
+    mongoc_client_t* mongodb_client = mongoc_client_pool_pop(url_mongodb_client_pool);
+    if (!mongodb_client) {
+        LOG(fatal) << "Failed to pop mongoc client";
+        return EXIT_FAILURE;
+    }
+    bool r = false;
+    while (!r) {
+        r = CreateIndex(mongodb_client, "url-shorten", "shortened_url", true);
+        if (!r) {
+        LOG(error) << "Failed to create mongodb index, try again";
+        sleep(1);
+        }
+    }
+    mongoc_client_pool_push(url_mongodb_client_pool, mongodb_client);
 
-    ClientPool<ThriftClient<UserMentionServiceClient>> user_mention_pool(
-        "user-mention-service", user_mention_addr, user_mention_port, 0,
-        user_mention_conns, user_mention_timeout, user_mention_keepalive, config_json);
+    std::mutex thread_lock;
+    UrlShortenHandler url_handler(url_memcached_client_pool, url_mongodb_client_pool, &thread_lock);
+    // -------------------------------- END URL --------------------------------
+    // -------------------------------- BEGIN USERMENTION --------------------------------
+    int user_mention_mongodb_conns = config_json["user-mongodb"]["connections"];
+    int user_mention_mongodb_timeout = config_json["user-mongodb"]["timeout_ms"];
+    int user_mention_memcached_conns = config_json["user-memcached"]["connections"];
+    int user_mention_memcached_timeout = config_json["user-memcached"]["timeout_ms"];
+
+    user_mention_memcached_client_pool = init_memcached_client_pool(config_json, "user", 32, user_mention_memcached_conns);
+    user_mention_mongodb_client_pool = init_mongodb_client_pool(config_json, "user", user_mention_mongodb_conns);
+    if (user_mention_memcached_client_pool == nullptr || user_mention_mongodb_client_pool == nullptr) {
+        return EXIT_FAILURE;
+    }
+
+    UserMentionHandler user_mention_handler(user_mention_memcached_client_pool, user_mention_mongodb_client_pool);
+    // -------------------------------- END USERMENTION --------------------------------
 
     std::shared_ptr<TServerSocket> server_socket = get_server_socket(config_json, "0.0.0.0", port);
     TThreadedServer server(
         std::make_shared<TextServiceProcessor>(std::make_shared<TextHandler>(
-            &url_client_pool, &user_mention_pool)),
+            &url_handler, &user_mention_handler)),
         server_socket,
         std::make_shared<TFramedTransportFactory>(),
         std::make_shared<TBinaryProtocolFactory>());
