@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::string netif = config_json["user-service"]["netif"];
-  std::string machine_id = GetMachineId(netif);
+  std::string machine_id = UserGetMachineId(netif);
   if (machine_id == "") {
     exit(EXIT_FAILURE);
   }
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   TThreadedServer server(
       std::make_shared<UserServiceProcessor>(std::make_shared<UserHandler>(
           &thread_lock, machine_id, secret, memcached_client_pool,
-          mongodb_client_pool, &social_graph_client_pool)),
+          mongodb_client_pool, nullptr)),
       server_socket,
       std::make_shared<TFramedTransportFactory>(),
       std::make_shared<TBinaryProtocolFactory>());

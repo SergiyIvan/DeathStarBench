@@ -338,7 +338,7 @@ function HomeTimelineServiceClient:ReadHomeTimeline(req_id, user_id, start, stop
 end
 
 function HomeTimelineServiceClient:send_ReadHomeTimeline(req_id, user_id, start, stop, carrier)
-  self.oprot:writeMessageBegin('ReadHomeTimeline', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('HomeTimelineService:ReadHomeTimeline', TMessageType.CALL, self._seqid)
   local args = ReadHomeTimeline_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -375,7 +375,7 @@ function HomeTimelineServiceClient:WriteHomeTimeline(req_id, post_id, user_id, t
 end
 
 function HomeTimelineServiceClient:send_WriteHomeTimeline(req_id, post_id, user_id, timestamp, user_mentions_id, carrier)
-  self.oprot:writeMessageBegin('WriteHomeTimeline', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('HomeTimelineService:WriteHomeTimeline', TMessageType.CALL, self._seqid)
   local args = WriteHomeTimeline_args:new{}
   args.req_id = req_id
   args.post_id = post_id
@@ -443,7 +443,7 @@ function HomeTimelineServiceProcessor:process_ReadHomeTimeline(seqid, iprot, opr
   else
     result.success = res
   end
-  oprot:writeMessageBegin('ReadHomeTimeline', reply_type, seqid)
+  oprot:writeMessageBegin('HomeTimelineService:ReadHomeTimeline', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -464,7 +464,7 @@ function HomeTimelineServiceProcessor:process_WriteHomeTimeline(seqid, iprot, op
   else
     result.success = res
   end
-  oprot:writeMessageBegin('WriteHomeTimeline', reply_type, seqid)
+  oprot:writeMessageBegin('HomeTimelineService:WriteHomeTimeline', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()

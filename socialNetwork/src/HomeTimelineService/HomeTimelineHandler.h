@@ -20,18 +20,18 @@ namespace social_network {
 class HomeTimelineHandler : public HomeTimelineServiceIf {
  public:
   HomeTimelineHandler(Redis *,
-                      ClientPool<ThriftClient<PostStorageServiceClient>> *,
-                      ClientPool<ThriftClient<SocialGraphServiceClient>> *);
+                      PostStorageServiceIf *,
+                      SocialGraphServiceIf *);
 
 
   HomeTimelineHandler(Redis *,Redis *,
-      ClientPool<ThriftClient<PostStorageServiceClient>>*,
-      ClientPool<ThriftClient<SocialGraphServiceClient>>*);
+      PostStorageServiceIf*,
+      SocialGraphServiceIf*);
 
 
   HomeTimelineHandler(RedisCluster *,
-                      ClientPool<ThriftClient<PostStorageServiceClient>> *,
-                      ClientPool<ThriftClient<SocialGraphServiceClient>> *);
+                      PostStorageServiceIf *,
+                      SocialGraphServiceIf *);
   ~HomeTimelineHandler() override = default;
 
   bool IsRedisReplicationEnabled();
@@ -48,48 +48,45 @@ class HomeTimelineHandler : public HomeTimelineServiceIf {
      Redis *_redis_primary_pool;
      Redis *_redis_client_pool;
      RedisCluster *_redis_cluster_client_pool;
-     ClientPool<ThriftClient<PostStorageServiceClient>> *_post_client_pool;
-     ClientPool<ThriftClient<SocialGraphServiceClient>> *_social_graph_client_pool;
+     PostStorageServiceIf *_post_service;
+     SocialGraphServiceIf *_social_graph_service;
 };
 
 HomeTimelineHandler::HomeTimelineHandler(
     Redis *redis_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>> *post_client_pool,
-    ClientPool<ThriftClient<SocialGraphServiceClient>>
-        *social_graph_client_pool) {
+    PostStorageServiceIf *post_service,
+    SocialGraphServiceIf *social_graph_service) {
     _redis_primary_pool = nullptr;
     _redis_replica_pool = nullptr;
     _redis_client_pool = redis_pool;
     _redis_cluster_client_pool = nullptr;
-    _post_client_pool = post_client_pool;
-    _social_graph_client_pool = social_graph_client_pool;
+    _post_service = post_service;
+    _social_graph_service = social_graph_service;
 }
 
 HomeTimelineHandler::HomeTimelineHandler(
     RedisCluster *redis_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>> *post_client_pool,
-    ClientPool<ThriftClient<SocialGraphServiceClient>>
-        *social_graph_client_pool) {
+    PostStorageServiceIf *post_service,
+    SocialGraphServiceIf *social_graph_service) {
     _redis_primary_pool = nullptr;
     _redis_replica_pool = nullptr;
     _redis_client_pool = nullptr;
     _redis_cluster_client_pool = redis_pool; 
-    _post_client_pool = post_client_pool;
-    _social_graph_client_pool = social_graph_client_pool;
+    _post_service = post_service;
+    _social_graph_service = social_graph_service;
 }
 
 HomeTimelineHandler::HomeTimelineHandler(
     Redis *redis_replica_pool,
     Redis *redis_primary_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>>* post_client_pool,
-    ClientPool<ThriftClient<SocialGraphServiceClient>>
-    * social_graph_client_pool) {
+    PostStorageServiceIf *post_service,
+    SocialGraphServiceIf *social_graph_service) {
     _redis_primary_pool = redis_primary_pool;
     _redis_replica_pool = redis_replica_pool;
     _redis_client_pool = nullptr;
     _redis_cluster_client_pool = nullptr;
-    _post_client_pool = post_client_pool;
-    _social_graph_client_pool = social_graph_client_pool;
+    _post_service = post_service;
+    _social_graph_service = social_graph_service;
 }
 
 bool HomeTimelineHandler::IsRedisReplicationEnabled() {
@@ -113,24 +110,10 @@ void HomeTimelineHandler::WriteHomeTimeline(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(followers_span->context(), writer);
 
-  auto social_graph_client_wrapper = _social_graph_client_pool->Pop();
-  if (!social_graph_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to social-graph-service";
-    throw se;
-  }
-  auto social_graph_client = social_graph_client_wrapper->GetClient();
+  // Updated for a local call.
   std::vector<int64_t> followers_id;
-  try {
-    social_graph_client->GetFollowers(followers_id, req_id, user_id,
-                                      writer_text_map);
-  } catch (...) {
-    LOG(error) << "Failed to get followers from social-network-service";
-    _social_graph_client_pool->Remove(social_graph_client_wrapper);
-    throw;
-  }
-  _social_graph_client_pool->Keepalive(social_graph_client_wrapper);
+  _social_graph_service->GetFollowers(followers_id, req_id, user_id, writer_text_map);
+
   followers_span->Finish();
 
   std::set<int64_t> followers_id_set(followers_id.begin(), followers_id.end());
@@ -260,22 +243,9 @@ void HomeTimelineHandler::ReadHomeTimeline(
     post_ids.emplace_back(std::stoul(post_id_str));
   }
 
-  auto post_client_wrapper = _post_client_pool->Pop();
-  if (!post_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to post-storage-service";
-    throw se;
-  }
-  auto post_client = post_client_wrapper->GetClient();
-  try {
-    post_client->ReadPosts(_return, req_id, post_ids, writer_text_map);
-  } catch (...) {
-    _post_client_pool->Remove(post_client_wrapper);
-    LOG(error) << "Failed to read posts from post-storage-service";
-    throw;
-  }
-  _post_client_pool->Keepalive(post_client_wrapper);
+  // Updated for a local call.
+  _post_service->ReadPosts(_return, req_id, post_ids, writer_text_map);
+
   span->Finish();
 }
 

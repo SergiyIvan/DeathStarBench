@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
               std::make_shared<HomeTimelineServiceProcessor>(
                   std::make_shared<HomeTimelineHandler>(&redis_replica_client_pool,
                       &redis_primary_client_pool,
-                      &post_storage_client_pool,
-                      &social_graph_client_pool)),
+                      nullptr,
+                      nullptr)),
               server_socket, std::make_shared<TFramedTransportFactory>(),
               std::make_shared<TBinaryProtocolFactory>());
 
@@ -120,21 +120,21 @@ int main(int argc, char *argv[]) {
     TThreadedServer server(
         std::make_shared<HomeTimelineServiceProcessor>(
             std::make_shared<HomeTimelineHandler>(&redis_cluster_client_pool,
-                                                  &post_storage_client_pool,
-                                                  &social_graph_client_pool)),
+                                                  nullptr,
+                                                  nullptr)),
         server_socket, std::make_shared<TFramedTransportFactory>(),
         std::make_shared<TBinaryProtocolFactory>());
 
     LOG(info) << "Starting the home-timeline-service server with Redis Cluster support...";
     server.serve();
   } else {
-    Redis redis_client_pool =
-        init_redis_client_pool(config_json, "home-timeline");
+    Redis* redis_client_pool =
+        nullptr; //init_redis_client_pool(config_json, "home-timeline");
     TThreadedServer server(
         std::make_shared<HomeTimelineServiceProcessor>(
-            std::make_shared<HomeTimelineHandler>(&redis_client_pool,
-                                                  &post_storage_client_pool,
-                                                  &social_graph_client_pool)),
+            std::make_shared<HomeTimelineHandler>(redis_client_pool,
+                                                  nullptr,
+                                                  nullptr)),
         server_socket, std::make_shared<TFramedTransportFactory>(),
         std::make_shared<TBinaryProtocolFactory>());
 

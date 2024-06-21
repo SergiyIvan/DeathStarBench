@@ -217,7 +217,7 @@ function ComposePostServiceClient:ComposePost(req_id, username, user_id, text, m
 end
 
 function ComposePostServiceClient:send_ComposePost(req_id, username, user_id, text, media_ids, media_types, post_type, carrier)
-  self.oprot:writeMessageBegin('ComposePost', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('ComposePostService:ComposePost', TMessageType.CALL, self._seqid)
   local args = ComposePost_args:new{}
   args.req_id = req_id
   args.username = username
@@ -287,7 +287,7 @@ function ComposePostServiceProcessor:process_ComposePost(seqid, iprot, oprot, se
   else
     result.success = res
   end
-  oprot:writeMessageBegin('ComposePost', reply_type, seqid)
+  oprot:writeMessageBegin('ComposePostService:ComposePost', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()

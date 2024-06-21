@@ -34,20 +34,20 @@ using std::chrono::seconds;
 using std::chrono::system_clock;
 using namespace jwt::params;
 
-static int64_t current_timestamp = -1;
-static int counter = 0;
+static int64_t user_current_timestamp = -1;
+static int user_counter = 0;
 
-static int GetCounter(int64_t timestamp) {
-  if (current_timestamp > timestamp) {
+static int UserGetCounter(int64_t timestamp) {
+  if (user_current_timestamp > timestamp) {
     LOG(fatal) << "Timestamps are not incremental.";
     exit(EXIT_FAILURE);
   }
-  if (current_timestamp == timestamp) {
-    return counter++;
+  if (user_current_timestamp == timestamp) {
+    return user_counter++;
   } else {
-    current_timestamp = timestamp;
-    counter = 0;
-    return counter++;
+    user_current_timestamp = timestamp;
+    user_counter = 0;
+    return user_counter++;
   }
 }
 
@@ -70,8 +70,7 @@ std::string GenRandomString(const int len) {
 class UserHandler : public UserServiceIf {
  public:
   UserHandler(std::mutex *, const std::string &, const std::string &,
-              memcached_pool_st *, mongoc_client_pool_t *,
-              ClientPool<ThriftClient<SocialGraphServiceClient>> *);
+              memcached_pool_st *, mongoc_client_pool_t *, SocialGraphServiceIf *);
   ~UserHandler() override = default;
   void RegisterUser(int64_t, const std::string &, const std::string &,
                     const std::string &, const std::string &,
@@ -91,27 +90,32 @@ class UserHandler : public UserServiceIf {
   int64_t GetUserId(int64_t, const std::string &,
                     const std::map<std::string, std::string> &) override;
 
+  void _SetSocialGraphService(SocialGraphServiceIf *);
+
  private:
   std::string _machine_id;
   std::string _secret;
   std::mutex *_thread_lock;
   memcached_pool_st *_memcached_client_pool;
   mongoc_client_pool_t *_mongodb_client_pool;
-  ClientPool<ThriftClient<SocialGraphServiceClient>> *_social_graph_client_pool;
+  SocialGraphServiceIf *_social_graph_service;
 };
 
 UserHandler::UserHandler(std::mutex *thread_lock, const std::string &machine_id,
                          const std::string &secret,
                          memcached_pool_st *memcached_client_pool,
                          mongoc_client_pool_t *mongodb_client_pool,
-                         ClientPool<ThriftClient<SocialGraphServiceClient>>
-                             *social_graph_client_pool) {
+                         SocialGraphServiceIf *social_graph_service) {
   _thread_lock = thread_lock;
   _machine_id = machine_id;
   _memcached_client_pool = memcached_client_pool;
   _mongodb_client_pool = mongodb_client_pool;
   _secret = secret;
-  _social_graph_client_pool = social_graph_client_pool;
+  _social_graph_service = social_graph_service;
+}
+
+void UserHandler::_SetSocialGraphService(SocialGraphServiceIf *social_graph_service) {
+  _social_graph_service = social_graph_service;
 }
 
 void UserHandler::RegisterUserWithId(
@@ -208,22 +212,8 @@ void UserHandler::RegisterUserWithId(
   mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
 
   if (!found) {
-    auto social_graph_client_wrapper = _social_graph_client_pool->Pop();
-    if (!social_graph_client_wrapper) {
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-      se.message = "Failed to connect to social-graph-service";
-      throw se;
-    }
-    auto social_graph_client = social_graph_client_wrapper->GetClient();
-    try {
-      social_graph_client->InsertUser(req_id, user_id, writer_text_map);
-    } catch (...) {
-      _social_graph_client_pool->Remove(social_graph_client_wrapper);
-      LOG(error) << "Failed to insert user to social-graph-client";
-      throw;
-    }
-    _social_graph_client_pool->Keepalive(social_graph_client_wrapper);
+    // Updated for a local call.
+    _social_graph_service->InsertUser(req_id, user_id, writer_text_map);
   }
 
   span->Finish();
@@ -249,7 +239,7 @@ void UserHandler::RegisterUser(
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())
           .count() -
       CUSTOM_EPOCH;
-  int idx = GetCounter(timestamp);
+  int idx = UserGetCounter(timestamp);
   _thread_lock->unlock();
 
   std::stringstream sstream;
@@ -355,23 +345,8 @@ void UserHandler::RegisterUser(
   mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
 
   if (!found) {
-    auto social_graph_client_wrapper = _social_graph_client_pool->Pop();
-    if (!social_graph_client_wrapper) {
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-      se.message = "Failed to connect to social-graph-service";
-      throw se;
-    }
-    auto social_graph_client = social_graph_client_wrapper->GetClient();
-    try {
-      social_graph_client->InsertUser(req_id, user_id, writer_text_map);
-    } catch (...) {
-      _social_graph_client_pool->Remove(social_graph_client_wrapper);
-      LOG(error) << "Failed to insert user to social-graph-service";
-      throw;
-    }
-
-    _social_graph_client_pool->Keepalive(social_graph_client_wrapper);
+    // Updated for a local call.
+    _social_graph_service->InsertUser(req_id, user_id, writer_text_map);
   }
 
   span->Finish();
@@ -902,7 +877,7 @@ int64_t UserHandler::GetUserId(
  *
  * MAC address is obtained from /sys/class/net/<netif>/address
  */
-u_int16_t HashMacAddressPid(const std::string &mac) {
+u_int16_t UserHashMacAddressPid(const std::string &mac) {
   u_int16_t hash = 0;
   std::string mac_pid = mac + std::to_string(getpid());
   for (unsigned int i = 0; i < mac_pid.size(); i++) {
@@ -911,7 +886,7 @@ u_int16_t HashMacAddressPid(const std::string &mac) {
   return hash;
 }
 
-std::string GetMachineId(std::string &netif) {
+std::string UserGetMachineId(std::string &netif) {
   std::string mac_hash;
 
   std::string mac_addr_filename = "/sys/class/net/" + netif + "/address";
@@ -932,7 +907,7 @@ std::string GetMachineId(std::string &netif) {
   LOG(info) << "MAC address = " << mac;
 
   std::stringstream stream;
-  stream << std::hex << HashMacAddressPid(mac);
+  stream << std::hex << UserHashMacAddressPid(mac);
   mac_hash = stream.str();
 
   if (mac_hash.size() > 3) {

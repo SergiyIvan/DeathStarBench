@@ -23,13 +23,13 @@ namespace social_network {
 class UserTimelineHandler : public UserTimelineServiceIf {
  public:
   UserTimelineHandler(Redis *, mongoc_client_pool_t *,
-                      ClientPool<ThriftClient<PostStorageServiceClient>> *);
+                      PostStorageServiceIf *);
 
   UserTimelineHandler(Redis *, Redis *, mongoc_client_pool_t *,
-      ClientPool<ThriftClient<PostStorageServiceClient>> *);
+      PostStorageServiceIf *);
 
   UserTimelineHandler(RedisCluster *, mongoc_client_pool_t *,
-                      ClientPool<ThriftClient<PostStorageServiceClient>> *);
+                      PostStorageServiceIf *);
   ~UserTimelineHandler() override = default;
 
   bool IsRedisReplicationEnabled();
@@ -47,40 +47,40 @@ class UserTimelineHandler : public UserTimelineServiceIf {
   Redis *_redis_primary_pool;
   RedisCluster *_redis_cluster_client_pool;
   mongoc_client_pool_t *_mongodb_client_pool;
-  ClientPool<ThriftClient<PostStorageServiceClient>> *_post_client_pool;
+  PostStorageServiceIf *_post_service;
 };
 
 UserTimelineHandler::UserTimelineHandler(
     Redis *redis_pool, mongoc_client_pool_t *mongodb_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>> *post_client_pool) {
+    PostStorageServiceIf *post_service) {
   _redis_client_pool = redis_pool;
   _redis_replica_pool = nullptr;
   _redis_primary_pool = nullptr;
   _redis_cluster_client_pool = nullptr;
   _mongodb_client_pool = mongodb_pool;
-  _post_client_pool = post_client_pool;
+  _post_service = post_service;
 }
 
 UserTimelineHandler::UserTimelineHandler(
     Redis* redis_replica_pool, Redis* redis_primary_pool, mongoc_client_pool_t* mongodb_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>>* post_client_pool) {
+    PostStorageServiceIf* post_service) {
     _redis_client_pool = nullptr;
     _redis_replica_pool = redis_replica_pool;
     _redis_primary_pool = redis_primary_pool;
     _redis_cluster_client_pool = nullptr;
     _mongodb_client_pool = mongodb_pool;
-    _post_client_pool = post_client_pool;
+    _post_service = post_service;
 }
 
 UserTimelineHandler::UserTimelineHandler(
     RedisCluster *redis_pool, mongoc_client_pool_t *mongodb_pool,
-    ClientPool<ThriftClient<PostStorageServiceClient>> *post_client_pool) {
+    PostStorageServiceIf *post_service) {
   _redis_cluster_client_pool = redis_pool;
   _redis_replica_pool = nullptr;
   _redis_primary_pool = nullptr;
   _redis_client_pool = nullptr;
   _mongodb_client_pool = mongodb_pool;
-  _post_client_pool = post_client_pool;
+  _post_service = post_service;
 }
 
 bool UserTimelineHandler::IsRedisReplicationEnabled() {
@@ -300,26 +300,11 @@ void UserTimelineHandler::ReadUserTimeline(
     mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
   }
 
+  // Updated for a local call.
   std::future<std::vector<Post>> post_future =
       std::async(std::launch::async, [&]() {
-        auto post_client_wrapper = _post_client_pool->Pop();
-        if (!post_client_wrapper) {
-          ServiceException se;
-          se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-          se.message = "Failed to connect to post-storage-service";
-          throw se;
-        }
         std::vector<Post> _return_posts;
-        auto post_client = post_client_wrapper->GetClient();
-        try {
-          post_client->ReadPosts(_return_posts, req_id, post_ids,
-                                 writer_text_map);
-        } catch (...) {
-          _post_client_pool->Remove(post_client_wrapper);
-          LOG(error) << "Failed to read posts from post-storage-service";
-          throw;
-        }
-        _post_client_pool->Keepalive(post_client_wrapper);
+        _post_service->ReadPosts(_return_posts, req_id, post_ids, writer_text_map);
         return _return_posts;
       });
 

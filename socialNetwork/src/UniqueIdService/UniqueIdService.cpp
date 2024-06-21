@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   int port = config_json["unique-id-service"]["port"];
   std::string netif = config_json["unique-id-service"]["netif"];
 
-  std::string machine_id = GetMachineId(netif);
+  std::string machine_id = UniqueIdGetMachineId(netif);
   if (machine_id == "") {
     exit(EXIT_FAILURE);
   }

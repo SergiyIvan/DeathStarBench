@@ -831,7 +831,7 @@ function UserServiceClient:RegisterUser(req_id, first_name, last_name, username,
 end
 
 function UserServiceClient:send_RegisterUser(req_id, first_name, last_name, username, password, carrier)
-  self.oprot:writeMessageBegin('RegisterUser', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:RegisterUser', TMessageType.CALL, self._seqid)
   local args = RegisterUser_args:new{}
   args.req_id = req_id
   args.first_name = first_name
@@ -863,7 +863,7 @@ function UserServiceClient:RegisterUserWithId(req_id, first_name, last_name, use
 end
 
 function UserServiceClient:send_RegisterUserWithId(req_id, first_name, last_name, username, password, user_id, carrier)
-  self.oprot:writeMessageBegin('RegisterUserWithId', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:RegisterUserWithId', TMessageType.CALL, self._seqid)
   local args = RegisterUserWithId_args:new{}
   args.req_id = req_id
   args.first_name = first_name
@@ -896,7 +896,7 @@ function UserServiceClient:Login(req_id, username, password, carrier)
 end
 
 function UserServiceClient:send_Login(req_id, username, password, carrier)
-  self.oprot:writeMessageBegin('Login', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:Login', TMessageType.CALL, self._seqid)
   local args = Login_args:new{}
   args.req_id = req_id
   args.username = username
@@ -932,7 +932,7 @@ function UserServiceClient:ComposeCreatorWithUserId(req_id, user_id, username, c
 end
 
 function UserServiceClient:send_ComposeCreatorWithUserId(req_id, user_id, username, carrier)
-  self.oprot:writeMessageBegin('ComposeCreatorWithUserId', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:ComposeCreatorWithUserId', TMessageType.CALL, self._seqid)
   local args = ComposeCreatorWithUserId_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -968,7 +968,7 @@ function UserServiceClient:ComposeCreatorWithUsername(req_id, username, carrier)
 end
 
 function UserServiceClient:send_ComposeCreatorWithUsername(req_id, username, carrier)
-  self.oprot:writeMessageBegin('ComposeCreatorWithUsername', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:ComposeCreatorWithUsername', TMessageType.CALL, self._seqid)
   local args = ComposeCreatorWithUsername_args:new{}
   args.req_id = req_id
   args.username = username
@@ -1003,7 +1003,7 @@ function UserServiceClient:GetUserId(req_id, username, carrier)
 end
 
 function UserServiceClient:send_GetUserId(req_id, username, carrier)
-  self.oprot:writeMessageBegin('GetUserId', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserService:GetUserId', TMessageType.CALL, self._seqid)
   local args = GetUserId_args:new{}
   args.req_id = req_id
   args.username = username
@@ -1074,7 +1074,7 @@ function UserServiceProcessor:process_RegisterUser(seqid, iprot, oprot, server_c
   else
     result.success = res
   end
-  oprot:writeMessageBegin('RegisterUser', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:RegisterUser', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1095,7 +1095,7 @@ function UserServiceProcessor:process_RegisterUserWithId(seqid, iprot, oprot, se
   else
     result.success = res
   end
-  oprot:writeMessageBegin('RegisterUserWithId', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:RegisterUserWithId', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1116,7 +1116,7 @@ function UserServiceProcessor:process_Login(seqid, iprot, oprot, server_ctx)
   else
     result.success = res
   end
-  oprot:writeMessageBegin('Login', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:Login', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1137,7 +1137,7 @@ function UserServiceProcessor:process_ComposeCreatorWithUserId(seqid, iprot, opr
   else
     result.success = res
   end
-  oprot:writeMessageBegin('ComposeCreatorWithUserId', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:ComposeCreatorWithUserId', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1158,7 +1158,7 @@ function UserServiceProcessor:process_ComposeCreatorWithUsername(seqid, iprot, o
   else
     result.success = res
   end
-  oprot:writeMessageBegin('ComposeCreatorWithUsername', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:ComposeCreatorWithUsername', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1179,7 +1179,7 @@ function UserServiceProcessor:process_GetUserId(seqid, iprot, oprot, server_ctx)
   else
     result.success = res
   end
-  oprot:writeMessageBegin('GetUserId', reply_type, seqid)
+  oprot:writeMessageBegin('UserService:GetUserId', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()

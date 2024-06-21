@@ -41,7 +41,7 @@ TextHandler::TextHandler(
 void TextHandler::ComposeText(
     TextServiceReturn &_return, int64_t req_id, const std::string &text,
     const std::map<std::string, std::string> &carrier) {
-  LOG(info) << "Invoked ComposeText!";
+  // LOG(info) << "Invoked ComposeText!";
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
