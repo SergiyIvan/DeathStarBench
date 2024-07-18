@@ -38,6 +38,7 @@ services:
 
   compose-post-service:
     image: deathstarbench/social-network-microservices:latest
+    # privileged: true
     hostname: compose-post-service
     #    ports:
     #      - 10001:9090
@@ -45,9 +46,14 @@ services:
     depends_on:
       jaeger-agent:
         condition: service_started
-    entrypoint: ComposePostService
+    entrypoint: ComposePostService # tail -f /dev/null
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "11"
+          memory: 5500M
 
   # post-storage-service:
   #   image: deathstarbench/social-network-microservices:latest

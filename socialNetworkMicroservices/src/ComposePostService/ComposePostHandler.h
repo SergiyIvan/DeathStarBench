@@ -363,6 +363,8 @@ void ComposePostHandler::ComposePost(
     const std::string &text, const std::vector<int64_t> &media_ids,
     const std::vector<std::string> &media_types, const PostType::type post_type,
     const std::map<std::string, std::string> &carrier) {
+  // auto start = std::chrono::high_resolution_clock::now();
+  // LOG(info) << "Start: " << duration_cast<milliseconds>(start.time_since_epoch()).count();
   TextMapReader reader(carrier);
   auto parent_span = opentracing::Tracer::Global()->Extract(reader);
   auto span = opentracing::Tracer::Global()->StartSpan(
@@ -438,6 +440,8 @@ void ComposePostHandler::ComposePost(
   //   throw;
   // }
   span->Finish();
+  // auto stop = std::chrono::high_resolution_clock::now();
+  // LOG(info) << "Stop: " << duration_cast<milliseconds>(stop.time_since_epoch()).count() << ", elapsed: " << duration_cast<milliseconds>(stop - start).count();
 }
 
 }  // namespace social_network

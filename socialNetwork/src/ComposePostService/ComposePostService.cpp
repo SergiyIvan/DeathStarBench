@@ -122,14 +122,13 @@ int main(int argc, char *argv[]) {
   // Register processors for a multiplexed server.
   std::shared_ptr<TMultiplexedProcessor> processor(new TMultiplexedProcessor());
   processor->registerProcessor("ComposePostService", std::make_shared<ComposePostServiceProcessor>(std::shared_ptr<ComposePostHandler>(compose_post_handler)));
-  // processor->registerProcessor("ComposePostService", std::make_shared<ComposePostServiceProcessor>(std::make_shared<ComposePostHandler>(post_storage_handler, user_timeline_handler, user_handler, unique_id_handler, media_handler, text_handler, home_timeline_handler)));
   processor->registerProcessor("HomeTimelineService", std::make_shared<HomeTimelineServiceProcessor>(std::shared_ptr<HomeTimelineHandler>(home_timeline_handler)));
   processor->registerProcessor("UserTimelineService", std::make_shared<UserTimelineServiceProcessor>(std::shared_ptr<UserTimelineHandler>(user_timeline_handler)));
   processor->registerProcessor("SocialGraphService", std::make_shared<SocialGraphServiceProcessor>(std::shared_ptr<SocialGraphHandler>(social_graph_handler)));
   processor->registerProcessor("UserService", std::make_shared<UserServiceProcessor>(std::shared_ptr<UserHandler>(user_handler)));
 
   std::shared_ptr<TServerSocket> server_socket = get_server_socket(config_json, "0.0.0.0", port);
-  TThreadedServer server(processor,//std::make_shared<ComposePostServiceProcessor>(std::make_shared<ComposePostHandler>(post_storage_handler, user_timeline_handler, user_handler, unique_id_handler, media_handler, text_handler, home_timeline_handler)),
+  TThreadedServer server(processor,
     server_socket,
     std::make_shared<TFramedTransportFactory>(),
     std::make_shared<TBinaryProtocolFactory>());

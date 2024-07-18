@@ -14,6 +14,11 @@ services:
     entrypoint: SocialGraphService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   social-graph-mongodb:
     image: mongo:4.4.6
@@ -48,6 +53,11 @@ services:
     entrypoint: ComposePostService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   post-storage-service:
     image: deathstarbench/social-network-microservices:latest
@@ -63,6 +73,11 @@ services:
     entrypoint: PostStorageService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   post-storage-memcached:
     image: memcached
@@ -92,6 +107,11 @@ services:
     entrypoint: UserTimelineService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   user-timeline-redis:
     image: redis
@@ -121,6 +141,11 @@ services:
         condition: service_started
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   url-shorten-memcached:
     image: memcached
@@ -150,6 +175,11 @@ services:
     entrypoint: UserService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   user-memcached:
     image: memcached
@@ -179,6 +209,11 @@ services:
     entrypoint: MediaService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   media-memcached:
     image: memcached
@@ -206,6 +241,11 @@ services:
     entrypoint: TextService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   unique-id-service:
     image: deathstarbench/social-network-microservices:latest
@@ -219,6 +259,11 @@ services:
     entrypoint: UniqueIdService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   user-mention-service:
     image: deathstarbench/social-network-microservices:latest
@@ -232,6 +277,11 @@ services:
     entrypoint: UserMentionService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   home-timeline-service:
     image: deathstarbench/social-network-microservices:latest
@@ -245,6 +295,11 @@ services:
     entrypoint: HomeTimelineService
     volumes:
       - ./config:/social-network-microservices/config
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
 
   nginx-thrift:
     image: yg397/openresty-thrift:xenial

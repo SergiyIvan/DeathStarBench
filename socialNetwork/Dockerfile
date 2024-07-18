@@ -14,15 +14,18 @@ COPY ./ /social-network-microservices
 RUN cd /social-network-microservices \
     && mkdir -p build \
     && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Debug .. \
+    && cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo .. \
     && make -j$(nproc) \
     && make install
 
+# FROM ubuntu:20.04
 FROM ubuntu:16.04
 
 # Copy compiled C++ binaries and dependencies
 COPY --from=builder /usr/local/bin/* /usr/local/bin/
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
+
+# RUN echo "deb http://security.ubuntu.com/ubuntu xenial-security main" >> /etc/apt/sources.list
 
 # Install system dependencies
 RUN apt-get update && \
@@ -34,4 +37,5 @@ RUN apt-get update && \
         libmemcachedutil2 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+        # build-essential git flex bison linux-tools-common linux-tools-generic linux-tools-5.15.0-97-generic libssl1.0.0 \
 WORKDIR /social-network-microservices

@@ -8,6 +8,8 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # Input parameters.
 TYPE=$1
 
+NCONNS_ARRAY=(2)
+
 function build_benchmark {
     docker image rm deathstarbench/social-network-microservices:latest
     docker build --tag=deathstarbench/social-network-microservices .
@@ -17,7 +19,9 @@ function build_benchmark {
 echo "Running Monolith..."
 cd "$DIR"/socialNetwork &> /dev/null
 build_benchmark
-bash "$DIR"/socialNetwork/benchmark.sh $TYPE
+for max_threads in "${NCONNS_ARRAY[@]}"; do
+    bash "$DIR"/socialNetwork/benchmark.sh $TYPE $max_threads
+done
 cd - &> /dev/null
 echo "Running Monolith... Finished!"
 
@@ -25,6 +29,8 @@ echo "Running Monolith... Finished!"
 echo "Running Microservices..."
 cd "$DIR"/socialNetworkMicroservices &> /dev/null
 build_benchmark
-bash "$DIR"/socialNetworkMicroservices/benchmark.sh $TYPE
+for max_threads in "${NCONNS_ARRAY[@]}"; do
+    bash "$DIR"/socialNetworkMicroservices/benchmark.sh $TYPE $max_threads
+done
 cd - &> /dev/null
 echo "Running Microservices... Finished!"

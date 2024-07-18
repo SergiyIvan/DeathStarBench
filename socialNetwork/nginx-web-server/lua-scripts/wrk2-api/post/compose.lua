@@ -24,16 +24,16 @@ function _M.ComposePost()
   local parent_span_context = tracer:binary_extract(ngx.var.opentracing_binary_context)
 
 
-  ngx.req.read_body()
-  local post = ngx.req.get_post_args()
+  -- ngx.req.read_body()
+  -- local post = ngx.req.get_post_args()
 
-  if (_StrIsEmpty(post.user_id) or _StrIsEmpty(post.username) or
-      _StrIsEmpty(post.post_type) or _StrIsEmpty(post.text)) then
-    ngx.status = ngx.HTTP_BAD_REQUEST
-    ngx.say("Incomplete arguments")
-    ngx.log(ngx.ERR, "Incomplete arguments")
-    ngx.exit(ngx.HTTP_BAD_REQUEST)
-  end
+  -- if (_StrIsEmpty(post.user_id) or _StrIsEmpty(post.username) or
+  --     _StrIsEmpty(post.post_type) or _StrIsEmpty(post.text)) then
+  --   ngx.status = ngx.HTTP_BAD_REQUEST
+  --   ngx.say("Incomplete arguments")
+  --   ngx.log(ngx.ERR, "Incomplete arguments")
+  --   ngx.exit(ngx.HTTP_BAD_REQUEST)
+  -- end
 
   local status, ret
 
@@ -45,16 +45,18 @@ function _M.ComposePost()
   local carrier = {}
   tracer:text_map_inject(span:context(), carrier)
 
-  if (not _StrIsEmpty(post.media_ids) and not _StrIsEmpty(post.media_types)) then
-    status, ret = pcall(client.ComposePost, client,
-        req_id, post.username, tonumber(post.user_id), post.text,
-        cjson.decode(post.media_ids), cjson.decode(post.media_types),
-        tonumber(post.post_type), carrier)
-  else
-    status, ret = pcall(client.ComposePost, client,
-        req_id, post.username, tonumber(post.user_id), post.text,
-        {}, {}, tonumber(post.post_type), carrier)
-  end
+  -- media_types=["png","png"]&post_type=0
+
+  -- if (not _StrIsEmpty(post.media_ids) and not _StrIsEmpty(post.media_types)) then
+  status, ret = pcall(client.ComposePost, client,
+      req_id, "username_90", 90, "4LpSiV9nDvnPukMJQlL6IeWYIC6SIRKWs1elFwKjbuMTbGsB85ZY7aqT76yRmV5AF84k9AIvKb1twe307ST4VTbZQEf1hiW4yxat6KQDtkKuzPyjsPp9tUKY06cgrVioikdr9FHr6bph7gYoNGu4sNnaZXnVIU6GNiKBCb1JC06LgW1ry87kVxWUyMzDvgkav08ibBNoBX1esJykGwOQv08WMjrsTcv2xz9KiVM5UH8Lve0wrIEQUm2vH6Iaj4wS @username_13 @username_37 http://E0FaHmeatiLtmBFfFEW62sBBTZsmIGkqG6azxdTnxdRZqu8FOmPmAbdyinTHrVHK http://ohzBdeahwslOGLyrAWZU04V46bi6JELNKeD5tVpy9EGDsXJVdmldztugEfpoH28b",
+      {"063045140802579712","943068289979364658"}, {"png","png"},
+      0, carrier)
+  -- else
+  --   status, ret = pcall(client.ComposePost, client,
+  --       req_id, post.username, tonumber(post.user_id), post.text,
+  --       {}, {}, tonumber(post.post_type), carrier)
+  -- end
   if not status then
     ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
     if (ret.message) then
@@ -71,6 +73,7 @@ function _M.ComposePost()
   GenericObjectPool:returnConnection(client)
   ngx.status = ngx.HTTP_OK
   ngx.say("Successfully upload post")
+
   span:finish()
   ngx.exit(ngx.status)
 end
