@@ -30,11 +30,11 @@ using std::chrono::system_clock;
 class SocialGraphHandler : public SocialGraphServiceIf {
  public:
   SocialGraphHandler(mongoc_client_pool_t *, Redis *,
-                     ClientPool<ThriftClient<UserServiceClient>> *);
+                     UserServiceIf *);
   SocialGraphHandler(mongoc_client_pool_t *, Redis *, Redis *,
-      ClientPool<ThriftClient<UserServiceClient>>*);
+      UserServiceIf*);
   SocialGraphHandler(mongoc_client_pool_t *, RedisCluster *,
-                     ClientPool<ThriftClient<UserServiceClient>> *);
+                     UserServiceIf *);
   ~SocialGraphHandler() override = default;
   bool IsRedisReplicationEnabled();
   void GetFollowers(std::vector<int64_t> &, int64_t, int64_t,
@@ -53,47 +53,53 @@ class SocialGraphHandler : public SocialGraphServiceIf {
   void InsertUser(int64_t, int64_t,
                   const std::map<std::string, std::string> &) override;
 
+  void _SetUserService(UserServiceIf *);
+
  private:
   mongoc_client_pool_t *_mongodb_client_pool;
   Redis *_redis_client_pool;
   Redis *_redis_replica_client_pool;
   Redis *_redis_primary_client_pool;
   RedisCluster *_redis_cluster_client_pool;
-  ClientPool<ThriftClient<UserServiceClient>> *_user_service_client_pool;
+  UserServiceIf *_user_service;
 };
 
 SocialGraphHandler::SocialGraphHandler(
     mongoc_client_pool_t *mongodb_client_pool, Redis *redis_client_pool,
-    ClientPool<ThriftClient<UserServiceClient>> *user_service_client_pool) {
+    UserServiceIf *user_service) {
   _mongodb_client_pool = mongodb_client_pool;
   _redis_client_pool = redis_client_pool;
   _redis_replica_client_pool = nullptr;
   _redis_primary_client_pool = nullptr;
   _redis_cluster_client_pool = nullptr;
-  _user_service_client_pool = user_service_client_pool;
+  _user_service = user_service;
 }
 
 SocialGraphHandler::SocialGraphHandler(
     mongoc_client_pool_t* mongodb_client_pool, Redis* redis_replica_client_pool, Redis* redis_primary_client_pool,
-    ClientPool<ThriftClient<UserServiceClient>>* user_service_client_pool) {
+    UserServiceIf* user_service) {
     _mongodb_client_pool = mongodb_client_pool;
     _redis_client_pool = nullptr;
     _redis_replica_client_pool = redis_replica_client_pool;
     _redis_primary_client_pool = redis_primary_client_pool;
     _redis_cluster_client_pool = nullptr;
-    _user_service_client_pool = user_service_client_pool;
+    _user_service = user_service;
 }
 
 SocialGraphHandler::SocialGraphHandler(
     mongoc_client_pool_t *mongodb_client_pool,
     RedisCluster *redis_cluster_client_pool,
-    ClientPool<ThriftClient<UserServiceClient>> *user_service_client_pool) {
+    UserServiceIf *user_service) {
   _mongodb_client_pool = mongodb_client_pool;
   _redis_client_pool = nullptr;
   _redis_replica_client_pool = nullptr;
   _redis_primary_client_pool = nullptr;
   _redis_cluster_client_pool = redis_cluster_client_pool;
-  _user_service_client_pool = user_service_client_pool;
+  _user_service = user_service;
+}
+
+void SocialGraphHandler::_SetUserService(UserServiceIf *user_service) {
+  _user_service = user_service;
 }
 
 bool SocialGraphHandler::IsRedisReplicationEnabled() {
@@ -835,47 +841,17 @@ void SocialGraphHandler::FollowWithUsername(
       {opentracing::ChildOf(parent_span->get())});
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
+  // Updated for a local call.
   std::future<int64_t> user_id_future = std::async(std::launch::async, [&]() {
-    auto user_client_wrapper = _user_service_client_pool->Pop();
-    if (!user_client_wrapper) {
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-      se.message = "Failed to connect to social-graph-service";
-      throw se;
-    }
-    auto user_client = user_client_wrapper->GetClient();
     int64_t _return;
-    try {
-      _return = user_client->GetUserId(req_id, user_name, writer_text_map);
-    } catch (...) {
-      _user_service_client_pool->Remove(user_client_wrapper);
-      LOG(error) << "Failed to get user_id from user-service";
-      throw;
-    }
-    _user_service_client_pool->Keepalive(user_client_wrapper);
+    _return = _user_service->GetUserId(req_id, user_name, writer_text_map);
     return _return;
   });
 
-  std::future<int64_t> followee_id_future =
-      std::async(std::launch::async, [&]() {
-        auto user_client_wrapper = _user_service_client_pool->Pop();
-        if (!user_client_wrapper) {
-          ServiceException se;
-          se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-          se.message = "Failed to connect to social-graph-service";
-          throw se;
-        }
-        auto user_client = user_client_wrapper->GetClient();
+  // Updated for a local call.
+  std::future<int64_t> followee_id_future = std::async(std::launch::async, [&]() {
         int64_t _return;
-        try {
-          _return =
-              user_client->GetUserId(req_id, followee_name, writer_text_map);
-        } catch (...) {
-          _user_service_client_pool->Remove(user_client_wrapper);
-          LOG(error) << "Failed to get user_id from user-service";
-          throw;
-        }
-        _user_service_client_pool->Keepalive(user_client_wrapper);
+        _return = _user_service->GetUserId(req_id, followee_name, writer_text_map);
         return _return;
       });
 
@@ -909,47 +885,17 @@ void SocialGraphHandler::UnfollowWithUsername(
       {opentracing::ChildOf(parent_span->get())});
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
+  // Updated for a local call.
   std::future<int64_t> user_id_future = std::async(std::launch::async, [&]() {
-    auto user_client_wrapper = _user_service_client_pool->Pop();
-    if (!user_client_wrapper) {
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-      se.message = "Failed to connect to social-graph-service";
-      throw se;
-    }
-    auto user_client = user_client_wrapper->GetClient();
     int64_t _return;
-    try {
-      _return = user_client->GetUserId(req_id, user_name, writer_text_map);
-    } catch (...) {
-      _user_service_client_pool->Remove(user_client_wrapper);
-      LOG(error) << "Failed to get user_id from user-service";
-      throw;
-    }
-    _user_service_client_pool->Keepalive(user_client_wrapper);
+    _return = _user_service->GetUserId(req_id, user_name, writer_text_map);
     return _return;
   });
 
-  std::future<int64_t> followee_id_future =
-      std::async(std::launch::async, [&]() {
-        auto user_client_wrapper = _user_service_client_pool->Pop();
-        if (!user_client_wrapper) {
-          ServiceException se;
-          se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-          se.message = "Failed to connect to social-graph-service";
-          throw se;
-        }
-        auto user_client = user_client_wrapper->GetClient();
+  // Updated for a local call.
+  std::future<int64_t> followee_id_future = std::async(std::launch::async, [&]() {
         int64_t _return;
-        try {
-          _return =
-              user_client->GetUserId(req_id, followee_name, writer_text_map);
-        } catch (...) {
-          _user_service_client_pool->Remove(user_client_wrapper);
-          LOG(error) << "Failed to get user_id from user-service";
-          throw;
-        }
-        _user_service_client_pool->Keepalive(user_client_wrapper);
+        _return = _user_service->GetUserId(req_id, followee_name, writer_text_map);
         return _return;
       });
 

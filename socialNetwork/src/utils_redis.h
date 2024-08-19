@@ -7,7 +7,7 @@
 using namespace sw::redis;
 namespace social_network {
 
-Redis init_redis_client_pool(
+Redis* init_redis_client_pool(
     const json &config_json,
     const std::string &service_name
 ) {
@@ -27,7 +27,7 @@ Redis init_redis_client_pool(
   pool_options.wait_timeout = std::chrono::milliseconds(config_json[service_name + "-redis"]["timeout_ms"]);
   pool_options.connection_lifetime = std::chrono::milliseconds(config_json[service_name + "-redis"]["keepalive_ms"]);
 
-  return Redis(connection_options, pool_options);
+  return new Redis(connection_options, pool_options);
 }
 
 RedisCluster init_redis_cluster_client_pool(

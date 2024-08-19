@@ -30,13 +30,13 @@ using std::chrono::system_clock;
 
 class ComposePostHandler : public ComposePostServiceIf {
  public:
-  ComposePostHandler(ClientPool<ThriftClient<PostStorageServiceClient>> *,
-                     ClientPool<ThriftClient<UserTimelineServiceClient>> *,
-                     ClientPool<ThriftClient<UserServiceClient>> *,
-                     ClientPool<ThriftClient<UniqueIdServiceClient>> *,
-                     ClientPool<ThriftClient<MediaServiceClient>> *,
-                     ClientPool<ThriftClient<TextServiceClient>> *,
-                     ClientPool<ThriftClient<HomeTimelineServiceClient>> *);
+  ComposePostHandler(PostStorageServiceIf *,
+                     UserTimelineServiceIf *,
+                     UserServiceIf *,
+                     UniqueIdServiceIf *,
+                     MediaServiceIf *,
+                     TextServiceIf *,
+                     HomeTimelineServiceIf *);
   ~ComposePostHandler() override = default;
 
   void ComposePost(int64_t req_id, const std::string &username, int64_t user_id,
@@ -47,17 +47,17 @@ class ComposePostHandler : public ComposePostServiceIf {
                    const std::map<std::string, std::string> &carrier) override;
 
  private:
-  ClientPool<ThriftClient<PostStorageServiceClient>> *_post_storage_client_pool;
-  ClientPool<ThriftClient<UserTimelineServiceClient>>
-      *_user_timeline_client_pool;
+  PostStorageServiceIf *_post_storage_service;
+  UserTimelineServiceIf
+      *_user_timeline_service;
 
-  ClientPool<ThriftClient<UserServiceClient>> *_user_service_client_pool;
-  ClientPool<ThriftClient<UniqueIdServiceClient>>
-      *_unique_id_service_client_pool;
-  ClientPool<ThriftClient<MediaServiceClient>> *_media_service_client_pool;
-  ClientPool<ThriftClient<TextServiceClient>> *_text_service_client_pool;
-  ClientPool<ThriftClient<HomeTimelineServiceClient>>
-      *_home_timeline_client_pool;
+  UserServiceIf *_user_service;
+  UniqueIdServiceIf
+      *_unique_id_service;
+  MediaServiceIf *_media_service;
+  TextServiceIf *_text_service;
+  HomeTimelineServiceIf
+      *_home_timeline_service;
 
   void _UploadUserTimelineHelper(
       int64_t req_id, int64_t post_id, int64_t user_id, int64_t timestamp,
@@ -87,24 +87,24 @@ class ComposePostHandler : public ComposePostServiceIf {
 };
 
 ComposePostHandler::ComposePostHandler(
-    ClientPool<social_network::ThriftClient<PostStorageServiceClient>>
-        *post_storage_client_pool,
-    ClientPool<social_network::ThriftClient<UserTimelineServiceClient>>
-        *user_timeline_client_pool,
-    ClientPool<ThriftClient<UserServiceClient>> *user_service_client_pool,
-    ClientPool<ThriftClient<UniqueIdServiceClient>>
-        *unique_id_service_client_pool,
-    ClientPool<ThriftClient<MediaServiceClient>> *media_service_client_pool,
-    ClientPool<ThriftClient<TextServiceClient>> *text_service_client_pool,
-    ClientPool<ThriftClient<HomeTimelineServiceClient>>
-        *home_timeline_client_pool) {
-  _post_storage_client_pool = post_storage_client_pool;
-  _user_timeline_client_pool = user_timeline_client_pool;
-  _user_service_client_pool = user_service_client_pool;
-  _unique_id_service_client_pool = unique_id_service_client_pool;
-  _media_service_client_pool = media_service_client_pool;
-  _text_service_client_pool = text_service_client_pool;
-  _home_timeline_client_pool = home_timeline_client_pool;
+    PostStorageServiceIf
+        *post_storage_service,
+    UserTimelineServiceIf
+        *user_timeline_service,
+    UserServiceIf *user_service,
+    UniqueIdServiceIf
+        *unique_id_service,
+    MediaServiceIf *media_service,
+    TextServiceIf *text_service,
+    HomeTimelineServiceIf
+        *home_timeline_service) {
+  _post_storage_service = post_storage_service;
+  _user_timeline_service = user_timeline_service;
+  _user_service = user_service;
+  _unique_id_service = unique_id_service;
+  _media_service = media_service;
+  _text_service = text_service;
+  _home_timeline_service = home_timeline_service;
 }
 
 Creator ComposePostHandler::_ComposeCreaterHelper(
@@ -118,28 +118,11 @@ Creator ComposePostHandler::_ComposeCreaterHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto user_client_wrapper = _user_service_client_pool->Pop();
-  if (!user_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to user-service";
-    LOG(error) << se.message;
-    span->Finish();
-    throw se;
-  }
-
-  auto user_client = user_client_wrapper->GetClient();
+  // Updated for a local call.
   Creator _return_creator;
-  try {
-    user_client->ComposeCreatorWithUserId(_return_creator, req_id, user_id,
+  _user_service->ComposeCreatorWithUserId(_return_creator, req_id, user_id,
                                           username, writer_text_map);
-  } catch (...) {
-    LOG(error) << "Failed to send compose-creator to user-service";
-    _user_service_client_pool->Remove(user_client_wrapper);
-    span->Finish();
-    throw;
-  }
-  _user_service_client_pool->Keepalive(user_client_wrapper);
+
   span->Finish();
   return _return_creator;
 }
@@ -155,28 +138,10 @@ TextServiceReturn ComposePostHandler::_ComposeTextHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto text_client_wrapper = _text_service_client_pool->Pop();
-  if (!text_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to text-service";
-    LOG(error) << se.message;
-    ;
-    span->Finish();
-    throw se;
-  }
-
-  auto text_client = text_client_wrapper->GetClient();
+  // Updated for a local call.
   TextServiceReturn _return_text;
-  try {
-    text_client->ComposeText(_return_text, req_id, text, writer_text_map);
-  } catch (...) {
-    LOG(error) << "Failed to send compose-text to text-service";
-    _text_service_client_pool->Remove(text_client_wrapper);
-    span->Finish();
-    throw;
-  }
-  _text_service_client_pool->Keepalive(text_client_wrapper);
+  _text_service->ComposeText(_return_text, req_id, text, writer_text_map);
+
   span->Finish();
   return _return_text;
 }
@@ -193,29 +158,11 @@ std::vector<Media> ComposePostHandler::_ComposeMediaHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto media_client_wrapper = _media_service_client_pool->Pop();
-  if (!media_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to media-service";
-    LOG(error) << se.message;
-    ;
-    span->Finish();
-    throw se;
-  }
-
-  auto media_client = media_client_wrapper->GetClient();
+  // Updated for a local call.
   std::vector<Media> _return_media;
-  try {
-    media_client->ComposeMedia(_return_media, req_id, media_types, media_ids,
+  _media_service->ComposeMedia(_return_media, req_id, media_types, media_ids,
                                writer_text_map);
-  } catch (...) {
-    LOG(error) << "Failed to send compose-media to media-service";
-    _media_service_client_pool->Remove(media_client_wrapper);
-    span->Finish();
-    throw;
-  }
-  _media_service_client_pool->Keepalive(media_client_wrapper);
+
   span->Finish();
   return _return_media;
 }
@@ -231,28 +178,11 @@ int64_t ComposePostHandler::_ComposeUniqueIdHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto unique_id_client_wrapper = _unique_id_service_client_pool->Pop();
-  if (!unique_id_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to unique_id-service";
-    LOG(error) << se.message;
-    span->Finish();
-    throw se;
-  }
-
-  auto unique_id_client = unique_id_client_wrapper->GetClient();
+  // Updated for a local call.
   int64_t _return_unique_id;
-  try {
-    _return_unique_id =
-        unique_id_client->ComposeUniqueId(req_id, post_type, writer_text_map);
-  } catch (...) {
-    LOG(error) << "Failed to send compose-unique_id to unique_id-service";
-    _unique_id_service_client_pool->Remove(unique_id_client_wrapper);
-    span->Finish();
-    throw;
-  }
-  _unique_id_service_client_pool->Keepalive(unique_id_client_wrapper);
+  _return_unique_id =
+        _unique_id_service->ComposeUniqueId(req_id, post_type, writer_text_map);
+
   span->Finish();
   return _return_unique_id;
 }
@@ -268,24 +198,8 @@ void ComposePostHandler::_UploadPostHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto post_storage_client_wrapper = _post_storage_client_pool->Pop();
-  if (!post_storage_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to post-storage-service";
-    LOG(error) << se.message;
-    ;
-    throw se;
-  }
-  auto post_storage_client = post_storage_client_wrapper->GetClient();
-  try {
-    post_storage_client->StorePost(req_id, post, writer_text_map);
-  } catch (...) {
-    _post_storage_client_pool->Remove(post_storage_client_wrapper);
-    LOG(error) << "Failed to store post to post-storage-service";
-    throw;
-  }
-  _post_storage_client_pool->Keepalive(post_storage_client_wrapper);
+  // Updated for a local call.
+  _post_storage_service->StorePost(req_id, post, writer_text_map);
 
   span->Finish();
 }
@@ -301,24 +215,9 @@ void ComposePostHandler::_UploadUserTimelineHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto user_timeline_client_wrapper = _user_timeline_client_pool->Pop();
-  if (!user_timeline_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to user-timeline-service";
-    LOG(error) << se.message;
-    ;
-    throw se;
-  }
-  auto user_timeline_client = user_timeline_client_wrapper->GetClient();
-  try {
-    user_timeline_client->WriteUserTimeline(req_id, post_id, user_id, timestamp,
+  // Updated for a local call.
+  _user_timeline_service->WriteUserTimeline(req_id, post_id, user_id, timestamp,
                                             writer_text_map);
-  } catch (...) {
-    _user_timeline_client_pool->Remove(user_timeline_client_wrapper);
-    throw;
-  }
-  _user_timeline_client_pool->Keepalive(user_timeline_client_wrapper);
 
   span->Finish();
 }
@@ -335,25 +234,9 @@ void ComposePostHandler::_UploadHomeTimelineHelper(
   TextMapWriter writer(writer_text_map);
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  auto home_timeline_client_wrapper = _home_timeline_client_pool->Pop();
-  if (!home_timeline_client_wrapper) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_THRIFT_CONN_ERROR;
-    se.message = "Failed to connect to home-timeline-service";
-    LOG(error) << se.message;
-    ;
-    throw se;
-  }
-  auto home_timeline_client = home_timeline_client_wrapper->GetClient();
-  try {
-    home_timeline_client->WriteHomeTimeline(req_id, post_id, user_id, timestamp,
+  // Updated for a local call.
+  _home_timeline_service->WriteHomeTimeline(req_id, post_id, user_id, timestamp,
                                             user_mentions_id, writer_text_map);
-  } catch (...) {
-    _home_timeline_client_pool->Remove(home_timeline_client_wrapper);
-    LOG(error) << "Failed to write home timeline to home-timeline-service";
-    throw;
-  }
-  _home_timeline_client_pool->Keepalive(home_timeline_client_wrapper);
 
   span->Finish();
 }
@@ -363,6 +246,8 @@ void ComposePostHandler::ComposePost(
     const std::string &text, const std::vector<int64_t> &media_ids,
     const std::vector<std::string> &media_types, const PostType::type post_type,
     const std::map<std::string, std::string> &carrier) {
+//   auto start = std::chrono::high_resolution_clock::now();
+//   LOG(info) << "Start: " << duration_cast<milliseconds>(start.time_since_epoch()).count();
   TextMapReader reader(carrier);
   auto parent_span = opentracing::Tracer::Global()->Extract(reader);
   auto span = opentracing::Tracer::Global()->StartSpan(
@@ -438,6 +323,8 @@ void ComposePostHandler::ComposePost(
   //   throw;
   // }
   span->Finish();
+//   auto stop = std::chrono::high_resolution_clock::now();
+//   LOG(info) << "Stop: " << duration_cast<milliseconds>(stop.time_since_epoch()).count() << ", elapsed: " << duration_cast<milliseconds>(stop - start).count();
 }
 
 }  // namespace social_network

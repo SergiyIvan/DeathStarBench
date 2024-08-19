@@ -22,20 +22,20 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::system_clock;
 
-static int64_t current_timestamp = -1;
-static int counter = 0;
+static int64_t unique_id_current_timestamp = -1;
+static int unique_id_counter = 0;
 
-static int GetCounter(int64_t timestamp) {
-  if (current_timestamp > timestamp) {
+static int UniqueIdGetCounter(int64_t timestamp) {
+  if (unique_id_current_timestamp > timestamp) {
     LOG(fatal) << "Timestamps are not incremental.";
     exit(EXIT_FAILURE);
   }
-  if (current_timestamp == timestamp) {
-    return counter++;
+  if (unique_id_current_timestamp == timestamp) {
+    return unique_id_counter++;
   } else {
-    current_timestamp = timestamp;
-    counter = 0;
-    return counter++;
+    unique_id_current_timestamp = timestamp;
+    unique_id_counter = 0;
+    return unique_id_counter++;
   }
 }
 
@@ -75,7 +75,7 @@ int64_t UniqueIdHandler::ComposeUniqueId(
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())
           .count() -
       CUSTOM_EPOCH;
-  int idx = GetCounter(timestamp);
+  int idx = UniqueIdGetCounter(timestamp);
   _thread_lock->unlock();
 
   std::stringstream sstream;
@@ -114,7 +114,7 @@ int64_t UniqueIdHandler::ComposeUniqueId(
  *
  * MAC address is obtained from /sys/class/net/<netif>/address
  */
-u_int16_t HashMacAddressPid(const std::string &mac) {
+u_int16_t UniqueIdHashMacAddressPid(const std::string &mac) {
   u_int16_t hash = 0;
   std::string mac_pid = mac + std::to_string(getpid());
   for (unsigned int i = 0; i < mac_pid.size(); i++) {
@@ -123,7 +123,7 @@ u_int16_t HashMacAddressPid(const std::string &mac) {
   return hash;
 }
 
-std::string GetMachineId(std::string &netif) {
+std::string UniqueIdGetMachineId(std::string &netif) {
   std::string mac_hash;
 
   std::string mac_addr_filename = "/sys/class/net/" + netif + "/address";
@@ -144,7 +144,7 @@ std::string GetMachineId(std::string &netif) {
   LOG(info) << "MAC address = " << mac;
 
   std::stringstream stream;
-  stream << std::hex << HashMacAddressPid(mac);
+  stream << std::hex << UniqueIdHashMacAddressPid(mac);
   mac_hash = stream.str();
 
   if (mac_hash.size() > 3) {

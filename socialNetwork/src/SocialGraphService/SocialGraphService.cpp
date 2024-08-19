@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
         std::make_shared<SocialGraphServiceProcessor>(
             std::make_shared<SocialGraphHandler>(mongodb_client_pool,
                                                  &redis_cluster_client_pool,
-                                                 &user_client_pool)),
+                                                 nullptr)),
         server_socket, std::make_shared<TFramedTransportFactory>(),
         std::make_shared<TBinaryProtocolFactory>());
     LOG(info) << "Starting the social-graph-service server with Redis Cluster support...";
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
       TThreadedServer server(
           std::make_shared<SocialGraphServiceProcessor>(
               std::make_shared<SocialGraphHandler>(
-                  mongodb_client_pool, &redis_replica_client_pool, &redis_primary_client_pool, &user_client_pool)),
+                  mongodb_client_pool, &redis_replica_client_pool, &redis_primary_client_pool, nullptr)),
           server_socket, std::make_shared<TFramedTransportFactory>(),
           std::make_shared<TBinaryProtocolFactory>());
       LOG(info) << "Starting the social-graph-service server with Redis replica support";
@@ -132,12 +132,12 @@ int main(int argc, char *argv[]) {
   }
 
   else {
-    Redis redis_client_pool =
-        init_redis_client_pool(config_json, "social-graph");
+    Redis* redis_client_pool =
+        nullptr; //init_redis_client_pool(config_json, "social-graph");
     TThreadedServer server(
         std::make_shared<SocialGraphServiceProcessor>(
             std::make_shared<SocialGraphHandler>(
-                mongodb_client_pool, &redis_client_pool, &user_client_pool)),
+                mongodb_client_pool, redis_client_pool, nullptr)),
         server_socket, std::make_shared<TFramedTransportFactory>(),
         std::make_shared<TBinaryProtocolFactory>());
     LOG(info) << "Starting the social-graph-service server ...";

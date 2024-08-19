@@ -316,7 +316,7 @@ function UserTimelineServiceClient:WriteUserTimeline(req_id, post_id, user_id, t
 end
 
 function UserTimelineServiceClient:send_WriteUserTimeline(req_id, post_id, user_id, timestamp, carrier)
-  self.oprot:writeMessageBegin('WriteUserTimeline', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserTimelineService:WriteUserTimeline', TMessageType.CALL, self._seqid)
   local args = WriteUserTimeline_args:new{}
   args.req_id = req_id
   args.post_id = post_id
@@ -350,7 +350,7 @@ function UserTimelineServiceClient:ReadUserTimeline(req_id, user_id, start, stop
 end
 
 function UserTimelineServiceClient:send_ReadUserTimeline(req_id, user_id, start, stop, carrier)
-  self.oprot:writeMessageBegin('ReadUserTimeline', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('UserTimelineService:ReadUserTimeline', TMessageType.CALL, self._seqid)
   local args = ReadUserTimeline_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -423,7 +423,7 @@ function UserTimelineServiceProcessor:process_WriteUserTimeline(seqid, iprot, op
   else
     result.success = res
   end
-  oprot:writeMessageBegin('WriteUserTimeline', reply_type, seqid)
+  oprot:writeMessageBegin('UserTimelineService:WriteUserTimeline', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -444,7 +444,7 @@ function UserTimelineServiceProcessor:process_ReadUserTimeline(seqid, iprot, opr
   else
     result.success = res
   end
-  oprot:writeMessageBegin('ReadUserTimeline', reply_type, seqid)
+  oprot:writeMessageBegin('UserTimelineService:ReadUserTimeline', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()

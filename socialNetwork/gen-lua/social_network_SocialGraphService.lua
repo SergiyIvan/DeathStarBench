@@ -871,7 +871,7 @@ function SocialGraphServiceClient:GetFollowers(req_id, user_id, carrier)
 end
 
 function SocialGraphServiceClient:send_GetFollowers(req_id, user_id, carrier)
-  self.oprot:writeMessageBegin('GetFollowers', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:GetFollowers', TMessageType.CALL, self._seqid)
   local args = GetFollowers_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -906,7 +906,7 @@ function SocialGraphServiceClient:GetFollowees(req_id, user_id, carrier)
 end
 
 function SocialGraphServiceClient:send_GetFollowees(req_id, user_id, carrier)
-  self.oprot:writeMessageBegin('GetFollowees', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:GetFollowees', TMessageType.CALL, self._seqid)
   local args = GetFollowees_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -941,7 +941,7 @@ function SocialGraphServiceClient:Follow(req_id, user_id, followee_id, carrier)
 end
 
 function SocialGraphServiceClient:send_Follow(req_id, user_id, followee_id, carrier)
-  self.oprot:writeMessageBegin('Follow', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:Follow', TMessageType.CALL, self._seqid)
   local args = Follow_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -974,7 +974,7 @@ function SocialGraphServiceClient:Unfollow(req_id, user_id, followee_id, carrier
 end
 
 function SocialGraphServiceClient:send_Unfollow(req_id, user_id, followee_id, carrier)
-  self.oprot:writeMessageBegin('Unfollow', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:Unfollow', TMessageType.CALL, self._seqid)
   local args = Unfollow_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -1007,7 +1007,7 @@ function SocialGraphServiceClient:FollowWithUsername(req_id, user_usernmae, foll
 end
 
 function SocialGraphServiceClient:send_FollowWithUsername(req_id, user_usernmae, followee_username, carrier)
-  self.oprot:writeMessageBegin('FollowWithUsername', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:FollowWithUsername', TMessageType.CALL, self._seqid)
   local args = FollowWithUsername_args:new{}
   args.req_id = req_id
   args.user_usernmae = user_usernmae
@@ -1040,7 +1040,7 @@ function SocialGraphServiceClient:UnfollowWithUsername(req_id, user_usernmae, fo
 end
 
 function SocialGraphServiceClient:send_UnfollowWithUsername(req_id, user_usernmae, followee_username, carrier)
-  self.oprot:writeMessageBegin('UnfollowWithUsername', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:UnfollowWithUsername', TMessageType.CALL, self._seqid)
   local args = UnfollowWithUsername_args:new{}
   args.req_id = req_id
   args.user_usernmae = user_usernmae
@@ -1073,7 +1073,7 @@ function SocialGraphServiceClient:InsertUser(req_id, user_id, carrier)
 end
 
 function SocialGraphServiceClient:send_InsertUser(req_id, user_id, carrier)
-  self.oprot:writeMessageBegin('InsertUser', TMessageType.CALL, self._seqid)
+  self.oprot:writeMessageBegin('SocialGraphService:InsertUser', TMessageType.CALL, self._seqid)
   local args = InsertUser_args:new{}
   args.req_id = req_id
   args.user_id = user_id
@@ -1141,7 +1141,7 @@ function SocialGraphServiceProcessor:process_GetFollowers(seqid, iprot, oprot, s
   else
     result.success = res
   end
-  oprot:writeMessageBegin('GetFollowers', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:GetFollowers', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1162,7 +1162,7 @@ function SocialGraphServiceProcessor:process_GetFollowees(seqid, iprot, oprot, s
   else
     result.success = res
   end
-  oprot:writeMessageBegin('GetFollowees', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:GetFollowees', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1183,7 +1183,7 @@ function SocialGraphServiceProcessor:process_Follow(seqid, iprot, oprot, server_
   else
     result.success = res
   end
-  oprot:writeMessageBegin('Follow', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:Follow', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1204,7 +1204,7 @@ function SocialGraphServiceProcessor:process_Unfollow(seqid, iprot, oprot, serve
   else
     result.success = res
   end
-  oprot:writeMessageBegin('Unfollow', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:Unfollow', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1225,7 +1225,7 @@ function SocialGraphServiceProcessor:process_FollowWithUsername(seqid, iprot, op
   else
     result.success = res
   end
-  oprot:writeMessageBegin('FollowWithUsername', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:FollowWithUsername', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1246,7 +1246,7 @@ function SocialGraphServiceProcessor:process_UnfollowWithUsername(seqid, iprot, 
   else
     result.success = res
   end
-  oprot:writeMessageBegin('UnfollowWithUsername', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:UnfollowWithUsername', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
@@ -1267,7 +1267,7 @@ function SocialGraphServiceProcessor:process_InsertUser(seqid, iprot, oprot, ser
   else
     result.success = res
   end
-  oprot:writeMessageBegin('InsertUser', reply_type, seqid)
+  oprot:writeMessageBegin('SocialGraphService:InsertUser', reply_type, seqid)
   result:write(oprot)
   oprot:writeMessageEnd()
   oprot.trans:flush()
